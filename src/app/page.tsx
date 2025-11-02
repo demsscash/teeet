@@ -73,6 +73,18 @@ export default function Dashboard() {
   const [activeTab, setActiveTab] = useState('overview')
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
+  const [currentTime, setCurrentTime] = useState(new Date())
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date())
+    }, 1000)
+
+    setTimeout(() => setIsLoading(false), 1500)
+
+    return () => clearInterval(timer)
+  }, [])
 
   const menuItems = [
     { id: 'overview', label: 'Tableau de bord', icon: BarChart3 },
@@ -106,211 +118,325 @@ export default function Dashboard() {
     }
   }
 
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-green-50 to-emerald-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 bg-gradient-primary rounded-2xl flex items-center justify-center mx-auto mb-6 animate-bounce-soft">
+            <GraduationCap className="h-8 w-8 text-white" />
+          </div>
+          <h2 className="text-2xl font-bold text-gradient mb-2">Chargement...</h2>
+          <p className="text-gray-600">Préparation de votre espace de travail</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b border-gray-200">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-green-50 to-emerald-50">
+      {/* Header moderne avec glass effect */}
+      <header className="glass sticky top-0 z-50 border-b border-white/20">
         <div className="px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
+          <div className="flex items-center justify-between h-20">
             <div className="flex items-center">
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => setSidebarOpen(!sidebarOpen)}
-                className="lg:hidden"
+                className="lg:hidden mr-4 text-primary-600 hover:text-primary-700 hover:bg-primary-50 transition-all duration-200"
               >
-                <Menu className="h-5 w-5" />
+                <Menu className="h-6 w-6" />
               </Button>
-              <div className="flex items-center space-x-4">
-                <div className="w-8 h-8 bg-green-600 rounded-lg flex items-center justify-center">
-                  <GraduationCap className="h-5 w-5 text-white" />
+              <div className="flex items-center space-x-6">
+                <div className="w-12 h-12 bg-gradient-primary rounded-2xl flex items-center justify-center shadow-soft hover:shadow-medium transition-all duration-300 hover:scale-105">
+                  <GraduationCap className="h-7 w-7 text-white" />
                 </div>
                 <div>
-                  <h1 className="text-xl font-bold text-gray-900">ERP Scolaire Mauritanie</h1>
-                  <p className="text-sm text-gray-500">École Primaire Nouakchott</p>
+                  <h1 className="text-2xl font-bold text-gradient">ERP Scolaire Premium</h1>
+                  <p className="text-sm text-gray-600 font-medium">École Excellence • Nouakchott</p>
                 </div>
               </div>
             </div>
-            
-            <div className="flex items-center space-x-4">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+
+            <div className="flex items-center space-x-6">
+              <div className="hidden md:block">
+                <div className="text-right">
+                  <p className="text-xs text-gray-500 font-medium">Heure locale</p>
+                  <p className="text-lg font-bold text-primary-600">
+                    {currentTime.toLocaleTimeString('fr-MR', { hour: '2-digit', minute: '2-digit' })}
+                  </p>
+                </div>
+              </div>
+
+              <div className="relative group">
+                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400 group-focus-within:text-primary-500 transition-colors" />
                 <input
                   type="text"
-                  placeholder="Rechercher..."
+                  placeholder="Rechercher élèves, classes..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  className="pl-12 pr-6 py-3 bg-white/80 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent w-64 lg:w-80 transition-all duration-200 hover:bg-white hover:shadow-soft focus:shadow-medium"
                 />
               </div>
-              
-              <Button variant="ghost" size="sm" className="relative">
-                <Bell className="h-5 w-5" />
+
+              <Button variant="ghost" size="sm" className="relative group hover:bg-primary-50 transition-all duration-200">
+                <Bell className="h-6 w-6 text-gray-600 group-hover:text-primary-600 transition-colors" />
                 {mockStats.unreadNotifications > 0 && (
-                  <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs bg-red-500">
+                  <span className="absolute -top-1 -right-1 h-6 w-6 flex items-center justify-center text-xs font-bold text-white bg-gradient-primary rounded-full shadow-soft animate-pulse-soft">
                     {mockStats.unreadNotifications}
-                  </Badge>
+                  </span>
                 )}
               </Button>
-              
-              <Button variant="ghost" size="sm">
-                <Settings className="h-5 w-5" />
-              </Button>
-              
-              <Button variant="ghost" size="sm">
-                <LogOut className="h-5 w-5" />
-              </Button>
+
+              <div className="hidden lg:block h-8 w-px bg-gray-300" />
+
+              <div className="hidden lg:flex items-center space-x-3">
+                <div className="w-10 h-10 bg-gradient-accent rounded-full flex items-center justify-center">
+                  <span className="text-white font-bold">A</span>
+                </div>
+                <div className="hidden sm:block">
+                  <p className="text-sm font-semibold text-gray-900">Admin</p>
+                  <p className="text-xs text-gray-500">Administrateur</p>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </header>
 
       <div className="flex">
-        {/* Sidebar */}
-        <aside className={`${sidebarOpen ? 'block' : 'hidden'} lg:block w-64 bg-white shadow-sm border-r border-gray-200 min-h-screen`}>
-          <nav className="p-4 space-y-2">
-            {menuItems.map((item) => {
-              const Icon = item.icon
-              return (
-                <Button
-                  key={item.id}
-                  variant={activeTab === item.id ? "default" : "ghost"}
-                  className="w-full justify-start"
-                  onClick={() => setActiveTab(item.id)}
-                >
-                  <Icon className="h-4 w-4 mr-3" />
-                  {item.label}
-                </Button>
-              )
-            })}
-          </nav>
-        </aside>
+          {/* Sidebar moderne */}
+          <aside className={`${sidebarOpen ? 'block' : 'hidden'} lg:block w-72 glass border-r border-white/20 min-h-screen`}>
+            <nav className="p-6 space-y-2">
+              <div className="mb-8">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-4">Navigation principale</p>
+              </div>
+              {menuItems.map((item, index) => {
+                const Icon = item.icon
+                const isActive = activeTab === item.id
+                return (
+                  <Button
+                    key={item.id}
+                    className={`w-full justify-start group transition-all duration-200 mb-2 ${
+                      isActive
+                        ? 'bg-gradient-primary text-white shadow-soft hover:shadow-medium'
+                        : 'text-gray-700 hover:text-primary-600 hover:bg-primary-50 hover:translate-x-1'
+                    }`}
+                    onClick={() => setActiveTab(item.id)}
+                    style={{
+                      animationDelay: `${index * 50}ms`
+                    }}
+                  >
+                    <Icon className={`h-5 w-5 mr-3 transition-all duration-200 ${
+                      isActive ? 'text-white' : 'text-gray-500 group-hover:text-primary-600'
+                    }`} />
+                    <span className="font-medium">{item.label}</span>
+                    {isActive && (
+                      <div className="ml-auto w-2 h-2 bg-white rounded-full animate-pulse-soft" />
+                    )}
+                  </Button>
+                )
+              })}
+            </nav>
+          </aside>
 
-        {/* Main Content */}
-        <main className="flex-1 p-6">
+          {/* Main Content moderne */}
+          <main className="flex-1 p-6 lg:p-8">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-            {/* Tableau de bord */}
-            <TabsContent value="overview" className="space-y-6">
+            {/* Tableau de bord moderne */}
+            <TabsContent value="overview" className="space-y-8 animate-fade-in">
               <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-bold text-gray-900">Tableau de bord</h2>
-                <div className="flex items-center space-x-2">
-                  <Badge variant="outline" className="text-green-600 border-green-600">
-                    <TrendingUp className="h-3 w-3 mr-1" />
-                    Année scolaire 2024-2025
+                <div>
+                  <h2 className="text-3xl font-bold text-gradient mb-2">Tableau de bord</h2>
+                  <p className="text-gray-600">Vue d'ensemble de votre établissement</p>
+                </div>
+                <div className="flex items-center space-x-4">
+                  <Badge className="bg-gradient-primary text-white border-0 px-4 py-2 shadow-soft">
+                    <TrendingUp className="h-4 w-4 mr-2" />
+                    Année 2024-2025
                   </Badge>
+                  <div className="text-right hidden md:block">
+                    <p className="text-sm text-gray-500">Dernière mise à jour</p>
+                    <p className="text-xs font-medium text-primary-600">
+                      {currentTime.toLocaleDateString('fr-MR')}
+                    </p>
+                  </div>
                 </div>
               </div>
 
-              {/* Stats Cards */}
+              {/* Stats Cards modernes */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Total Élèves</CardTitle>
-                    <GraduationCap className="h-4 w-4 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">{mockStats.totalStudents}</div>
-                    <p className="text-xs text-muted-foreground">
-                      +12% par rapport à l'année dernière
-                    </p>
-                  </CardContent>
-                </Card>
+                <div className="glass p-6 rounded-2xl hover:shadow-medium transition-all duration-300 hover:scale-105 group cursor-pointer">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="w-12 h-12 bg-gradient-primary/20 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                      <GraduationCap className="h-6 w-6 text-primary-600" />
+                    </div>
+                    <div className="text-xs font-semibold text-green-600 bg-green-50 px-2 py-1 rounded-full">
+                      +12%
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-3xl font-bold text-gray-900">{mockStats.totalStudents}</p>
+                    <p className="text-sm text-gray-600">Total Élèves</p>
+                  </div>
+                </div>
 
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Présents aujourd'hui</CardTitle>
-                    <UserCheck className="h-4 w-4 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold text-green-600">{mockStats.presentToday}</div>
-                    <p className="text-xs text-muted-foreground">
-                      {mockStats.absentToday} absents
-                    </p>
-                  </CardContent>
-                </Card>
+                <div className="glass p-6 rounded-2xl hover:shadow-medium transition-all duration-300 hover:scale-105 group cursor-pointer">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                      <UserCheck className="h-6 w-6 text-green-600" />
+                    </div>
+                    <div className="text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-1 rounded-full">
+                      95%
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-3xl font-bold text-green-600">{mockStats.presentToday}</p>
+                    <p className="text-sm text-gray-600">Présents aujourd'hui</p>
+                  </div>
+                </div>
 
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Enseignants</CardTitle>
-                    <Users className="h-4 w-4 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">{mockStats.totalTeachers}</div>
-                    <p className="text-xs text-muted-foreground">
-                      15 présents aujourd'hui
-                    </p>
-                  </CardContent>
-                </Card>
+                <div className="glass p-6 rounded-2xl hover:shadow-medium transition-all duration-300 hover:scale-105 group cursor-pointer">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="w-12 h-12 bg-accent-100 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                      <Users className="h-6 w-6 text-accent-600" />
+                    </div>
+                    <div className="text-xs font-semibold text-accent-600 bg-accent-50 px-2 py-1 rounded-full">
+                      Actif
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-3xl font-bold text-gray-900">{mockStats.totalTeachers}</p>
+                    <p className="text-sm text-gray-600">Enseignants</p>
+                  </div>
+                </div>
 
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Revenus mensuels</CardTitle>
-                    <DollarSign className="h-4 w-4 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">{mockStats.monthlyRevenue.toLocaleString()} MRU</div>
-                    <p className="text-xs text-muted-foreground">
-                      {mockStats.pendingPayments.toLocaleString()} MRU en attente
-                    </p>
-                  </CardContent>
-                </Card>
+                <div className="glass p-6 rounded-2xl hover:shadow-medium transition-all duration-300 hover:scale-105 group cursor-pointer">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="w-12 h-12 bg-gradient-accent/20 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                      <DollarSign className="h-6 w-6 text-accent-600" />
+                    </div>
+                    <div className="text-xs font-semibold text-danger-600 bg-danger-50 px-2 py-1 rounded-full">
+                      -{Math.round((mockStats.pendingPayments / mockStats.monthlyRevenue) * 100)}%
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-3xl font-bold text-gray-900">{(mockStats.monthlyRevenue / 1000).toFixed(0)}K</p>
+                    <p className="text-sm text-gray-600">Revenus mensuels (MRU)</p>
+                  </div>
+                </div>
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Activités récentes */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Activités récentes</CardTitle>
-                    <CardDescription>Dernières activités du système</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      {mockRecentActivities.map((activity) => (
-                        <div key={activity.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                          <div className="flex items-center space-x-3">
-                            {getActivityIcon(activity.type)}
-                            <div>
-                              <p className="text-sm font-medium">{activity.student}</p>
-                              <p className="text-xs text-gray-500">{activity.class} • {activity.time}</p>
-                            </div>
-                          </div>
-                          <Badge className={getStatusColor(activity.status)}>
-                            {activity.status}
-                          </Badge>
-                        </div>
-                      ))}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {/* Activités récentes modernes */}
+                <div className="glass p-6 rounded-2xl">
+                  <div className="flex items-center justify-between mb-6">
+                    <div>
+                      <h3 className="text-xl font-bold text-gray-900">Activités récentes</h3>
+                      <p className="text-sm text-gray-600 mt-1">Dernières activités du système</p>
                     </div>
-                  </CardContent>
-                </Card>
-
-                {/* Classes */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Classes</CardTitle>
-                    <CardDescription>Aperçu des classes</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4 max-h-80 overflow-y-auto">
-                      {mockClasses.map((classItem) => (
-                        <div key={classItem.id} className="flex items-center justify-between p-3 border rounded-lg">
+                    <Button variant="outline" size="sm" className="text-primary-600 border-primary-200 hover:bg-primary-50">
+                      Voir tout
+                    </Button>
+                  </div>
+                  <div className="space-y-3">
+                    {mockRecentActivities.map((activity, index) => (
+                      <div
+                        key={activity.id}
+                        className="flex items-center justify-between p-4 bg-white/50 rounded-xl hover:bg-white/80 transition-all duration-200 group cursor-pointer hover:shadow-soft"
+                        style={{
+                          animationDelay: `${index * 100}ms`
+                        }}
+                      >
+                        <div className="flex items-center space-x-4">
+                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                            activity.status === 'urgent' ? 'bg-danger-100' :
+                            activity.status === 'important' ? 'bg-accent-100' :
+                            'bg-primary-100'
+                          }`}>
+                            {getActivityIcon(activity.type)}
+                          </div>
                           <div>
-                            <p className="text-sm font-medium">{classItem.name}</p>
-                            <p className="text-xs text-gray-500">{classItem.teacher}</p>
+                            <p className="text-sm font-semibold text-gray-900 group-hover:text-primary-600 transition-colors">
+                              {activity.student}
+                            </p>
+                            <p className="text-xs text-gray-500">{activity.class} • {activity.time}</p>
+                          </div>
+                        </div>
+                        <span className={`text-xs font-semibold px-3 py-1 rounded-full ${
+                          activity.status === 'urgent' ? 'bg-danger-100 text-danger-700' :
+                          activity.status === 'important' ? 'bg-accent-100 text-accent-700' :
+                          'bg-primary-100 text-primary-700'
+                        }`}>
+                          {activity.status === 'urgent' ? 'Urgent' :
+                           activity.status === 'important' ? 'Important' : 'Normal'}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Classes modernes */}
+                <div className="glass p-6 rounded-2xl">
+                  <div className="flex items-center justify-between mb-6">
+                    <div>
+                      <h3 className="text-xl font-bold text-gray-900">Classes</h3>
+                      <p className="text-sm text-gray-600 mt-1">Aperçu des classes</p>
+                    </div>
+                    <Button variant="outline" size="sm" className="text-primary-600 border-primary-200 hover:bg-primary-50">
+                      Gérer
+                    </Button>
+                  </div>
+                  <div className="space-y-3 max-h-96 overflow-y-auto custom-scrollbar">
+                    {mockClasses.map((classItem, index) => {
+                      const fillPercentage = (classItem.students / classItem.capacity) * 100
+                      const isOverCapacity = fillPercentage > 100
+                      return (
+                        <div
+                          key={classItem.id}
+                          className="flex items-center justify-between p-4 bg-white/50 rounded-xl hover:bg-white/80 transition-all duration-200 group cursor-pointer hover:shadow-soft"
+                          style={{
+                            animationDelay: `${index * 100}ms`
+                          }}
+                        >
+                          <div className="flex items-center space-x-4">
+                            <div className="w-12 h-12 bg-gradient-primary/20 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                              <BookOpen className="h-6 w-6 text-primary-600" />
+                            </div>
+                            <div>
+                              <p className="text-sm font-semibold text-gray-900 group-hover:text-primary-600 transition-colors">
+                                {classItem.name}
+                              </p>
+                              <p className="text-xs text-gray-500">{classItem.teacher}</p>
+                            </div>
                           </div>
                           <div className="text-right">
-                            <p className="text-sm font-medium">{classItem.students}/{classItem.capacity}</p>
-                            <div className="w-16 h-2 bg-gray-200 rounded-full mt-1">
-                              <div 
-                                className="h-2 bg-green-500 rounded-full"
-                                style={{ width: `${(classItem.students / classItem.capacity) * 100}%` }}
+                            <p className={`text-sm font-bold ${
+                              isOverCapacity ? 'text-danger-600' :
+                              fillPercentage > 90 ? 'text-accent-600' :
+                              'text-primary-600'
+                            }`}>
+                              {classItem.students}/{classItem.capacity}
+                            </p>
+                            <div className="w-20 h-2 bg-gray-200 rounded-full mt-2 overflow-hidden">
+                              <div
+                                className={`h-full rounded-full transition-all duration-500 ${
+                                  isOverCapacity ? 'bg-gradient-danger' :
+                                  fillPercentage > 90 ? 'bg-gradient-accent' :
+                                  'bg-gradient-primary'
+                                }`}
+                                style={{ width: `${Math.min(fillPercentage, 100)}%` }}
                               />
                             </div>
+                            <p className="text-xs text-gray-500 mt-1">
+                              {Math.round(fillPercentage)}%
+                            </p>
                           </div>
                         </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
+                      )
+                    })}
+                  </div>
+                </div>
               </div>
             </TabsContent>
 
