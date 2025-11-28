@@ -5,10 +5,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { 
-  Users, 
-  GraduationCap, 
-  BookOpen, 
+import {
+  Users,
+  GraduationCap,
+  BookOpen,
+  Book,
   Calendar,
   Bell,
   TrendingUp,
@@ -30,6 +31,7 @@ import {
   Edit,
   Trash2
 } from 'lucide-react'
+import { EcolyLogo } from '@/components/ui/ecoly-logo'
 import { AuthProvider } from '@/contexts/AuthContext'
 import { useAuth } from '@/contexts/AuthContext'
 import StudentManagement from '@/components/students/StudentManagement'
@@ -40,17 +42,30 @@ import TeacherManagement from '@/components/teachers/TeacherManagement'
 import FinanceManagement from '@/components/finance/FinanceManagement'
 import DocumentGenerator from '@/components/documents/DocumentGenerator'
 import MeetingManagement from '@/components/meetings/MeetingManagement'
+import SubjectManagement from '@/components/subjects/SubjectManagement'
+import ClassManagement from '@/components/classes/ClassManagement'
+import SettingsManagement from '@/components/settings/SettingsManagement'
+import UserMenu from '@/components/navigation/UserMenu'
 
-// Mock data pour démonstration
-const mockStats = {
-  totalStudents: 245,
-  presentToday: 232,
-  absentToday: 13,
-  totalTeachers: 18,
-  totalClasses: 12,
-  monthlyRevenue: 2450000,
-  pendingPayments: 450000,
-  unreadNotifications: 8
+// Interface pour les statistiques
+interface DashboardStats {
+  totalStudents: number
+  activeStudents: number
+  totalTeachers: number
+  activeTeachers: number
+  totalClasses: number
+  attendancePercentage: number
+  todayAttendances: number
+  recentGrades: number
+  recentActivities: Array<{
+    id: string
+    type: string
+    title: string
+    description: string
+    timestamp: string
+    icon: string
+    color: string
+  }>
 }
 
 const mockRecentActivities = [
@@ -75,22 +90,40 @@ export default function Dashboard() {
   const [searchQuery, setSearchQuery] = useState('')
   const [currentTime, setCurrentTime] = useState(new Date())
   const [isLoading, setIsLoading] = useState(true)
+  const [stats, setStats] = useState<DashboardStats | null>(null)
 
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentTime(new Date())
     }, 1000)
 
-    setTimeout(() => setIsLoading(false), 1500)
+    fetchDashboardStats()
 
     return () => clearInterval(timer)
   }, [])
+
+  const fetchDashboardStats = async () => {
+    try {
+      console.log('Fetching dashboard stats from /api/stats...')
+      const response = await fetch('/api/stats')
+      console.log('API response status:', response.status)
+      if (!response.ok) throw new Error('Failed to fetch stats')
+      const data = await response.json()
+      console.log('API response data:', data)
+      setStats(data)
+    } catch (error) {
+      console.error('Error fetching dashboard stats:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   const menuItems = [
     { id: 'overview', label: 'Tableau de bord', icon: BarChart3 },
     { id: 'students', label: 'Élèves', icon: GraduationCap },
     { id: 'teachers', label: 'Enseignants', icon: Users },
     { id: 'classes', label: 'Classes', icon: BookOpen },
+    { id: 'subjects', label: 'Matières', icon: Book },
     { id: 'grades', label: 'Notes', icon: FileText },
     { id: 'attendance', label: 'Présences', icon: UserCheck },
     { id: 'observations', label: 'Observations', icon: MessageSquare },
@@ -122,10 +155,10 @@ export default function Dashboard() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-green-50 to-emerald-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="w-16 h-16 bg-gradient-primary rounded-2xl flex items-center justify-center mx-auto mb-6 animate-bounce-soft">
-            <GraduationCap className="h-8 w-8 text-white" />
+          <div className="mb-6 animate-bounce-soft">
+            <EcolyLogo size="lg" className="mx-auto" />
           </div>
-          <h2 className="text-2xl font-bold text-gradient mb-2">Chargement...</h2>
+          <h2 className="text-2xl font-bold text-gradient mb-2">Ecoly - Chargement...</h2>
           <p className="text-gray-600">Préparation de votre espace de travail</p>
         </div>
       </div>
@@ -148,12 +181,10 @@ export default function Dashboard() {
                 <Menu className="h-6 w-6" />
               </Button>
               <div className="flex items-center space-x-6">
-                <div className="w-12 h-12 bg-gradient-primary rounded-2xl flex items-center justify-center shadow-soft hover:shadow-medium transition-all duration-300 hover:scale-105">
-                  <GraduationCap className="h-7 w-7 text-white" />
-                </div>
+                <EcolyLogo size="md" className="shadow-soft hover:shadow-medium transition-all duration-300" />
                 <div>
-                  <h1 className="text-2xl font-bold text-gradient">ERP Scolaire Premium</h1>
-                  <p className="text-sm text-gray-600 font-medium">École Excellence • Nouakchott</p>
+                  <h1 className="text-2xl font-bold text-gradient">Ecoly</h1>
+                  <p className="text-sm text-gray-600 font-medium">Système de Gestion Scolaire</p>
                 </div>
               </div>
             </div>
@@ -181,23 +212,12 @@ export default function Dashboard() {
 
               <Button variant="ghost" size="sm" className="relative group hover:bg-primary-50 transition-all duration-200">
                 <Bell className="h-6 w-6 text-gray-600 group-hover:text-primary-600 transition-colors" />
-                {mockStats.unreadNotifications > 0 && (
-                  <span className="absolute -top-1 -right-1 h-6 w-6 flex items-center justify-center text-xs font-bold text-white bg-gradient-primary rounded-full shadow-soft animate-pulse-soft">
-                    {mockStats.unreadNotifications}
-                  </span>
-                )}
               </Button>
 
               <div className="hidden lg:block h-8 w-px bg-gray-300" />
 
-              <div className="hidden lg:flex items-center space-x-3">
-                <div className="w-10 h-10 bg-gradient-accent rounded-full flex items-center justify-center">
-                  <span className="text-white font-bold">A</span>
-                </div>
-                <div className="hidden sm:block">
-                  <p className="text-sm font-semibold text-gray-900">Admin</p>
-                  <p className="text-xs text-gray-500">Administrateur</p>
-                </div>
+              <div className="flex items-center space-x-3">
+                <UserMenu onSettingsClick={() => setActiveTab('settings')} />
               </div>
             </div>
           </div>
@@ -265,67 +285,81 @@ export default function Dashboard() {
               </div>
 
               {/* Stats Cards modernes */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <div className="glass p-6 rounded-2xl hover:shadow-medium transition-all duration-300 hover:scale-105 group cursor-pointer">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="w-12 h-12 bg-gradient-primary/20 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
-                      <GraduationCap className="h-6 w-6 text-primary-600" />
+              {stats ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                  <div className="glass p-6 rounded-2xl hover:shadow-medium transition-all duration-300 hover:scale-105 group cursor-pointer">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="w-12 h-12 bg-gradient-primary/20 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                        <GraduationCap className="h-6 w-6 text-primary-600" />
+                      </div>
+                      <div className="text-xs font-semibold text-green-600 bg-green-50 px-2 py-1 rounded-full">
+                        Actifs
+                      </div>
                     </div>
-                    <div className="text-xs font-semibold text-green-600 bg-green-50 px-2 py-1 rounded-full">
-                      +12%
+                    <div className="space-y-1">
+                      <p className="text-3xl font-bold text-gray-900">{stats.totalStudents}</p>
+                      <p className="text-sm text-gray-600">Total Élèves</p>
                     </div>
                   </div>
-                  <div className="space-y-1">
-                    <p className="text-3xl font-bold text-gray-900">{mockStats.totalStudents}</p>
-                    <p className="text-sm text-gray-600">Total Élèves</p>
-                  </div>
-                </div>
 
-                <div className="glass p-6 rounded-2xl hover:shadow-medium transition-all duration-300 hover:scale-105 group cursor-pointer">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
-                      <UserCheck className="h-6 w-6 text-green-600" />
+                  <div className="glass p-6 rounded-2xl hover:shadow-medium transition-all duration-300 hover:scale-105 group cursor-pointer">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                        <UserCheck className="h-6 w-6 text-green-600" />
+                      </div>
+                      <div className="text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-1 rounded-full">
+                        {stats.attendancePercentage}%
+                      </div>
                     </div>
-                    <div className="text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-1 rounded-full">
-                      95%
+                    <div className="space-y-1">
+                      <p className="text-3xl font-bold text-green-600">{stats.todayAttendances}</p>
+                      <p className="text-sm text-gray-600">Présents aujourd'hui</p>
                     </div>
                   </div>
-                  <div className="space-y-1">
-                    <p className="text-3xl font-bold text-green-600">{mockStats.presentToday}</p>
-                    <p className="text-sm text-gray-600">Présents aujourd'hui</p>
-                  </div>
-                </div>
 
-                <div className="glass p-6 rounded-2xl hover:shadow-medium transition-all duration-300 hover:scale-105 group cursor-pointer">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="w-12 h-12 bg-accent-100 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
-                      <Users className="h-6 w-6 text-accent-600" />
+                  <div className="glass p-6 rounded-2xl hover:shadow-medium transition-all duration-300 hover:scale-105 group cursor-pointer">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="w-12 h-12 bg-accent-100 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                        <Users className="h-6 w-6 text-accent-600" />
+                      </div>
+                      <div className="text-xs font-semibold text-accent-600 bg-accent-50 px-2 py-1 rounded-full">
+                        Actifs
+                      </div>
                     </div>
-                    <div className="text-xs font-semibold text-accent-600 bg-accent-50 px-2 py-1 rounded-full">
-                      Actif
+                    <div className="space-y-1">
+                      <p className="text-3xl font-bold text-gray-900">{stats.totalTeachers}</p>
+                      <p className="text-sm text-gray-600">Enseignants</p>
                     </div>
                   </div>
-                  <div className="space-y-1">
-                    <p className="text-3xl font-bold text-gray-900">{mockStats.totalTeachers}</p>
-                    <p className="text-sm text-gray-600">Enseignants</p>
-                  </div>
-                </div>
 
-                <div className="glass p-6 rounded-2xl hover:shadow-medium transition-all duration-300 hover:scale-105 group cursor-pointer">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="w-12 h-12 bg-gradient-accent/20 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
-                      <DollarSign className="h-6 w-6 text-accent-600" />
+                  <div className="glass p-6 rounded-2xl hover:shadow-medium transition-all duration-300 hover:scale-105 group cursor-pointer">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="w-12 h-12 bg-gradient-accent/20 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                        <BookOpen className="h-6 w-6 text-accent-600" />
+                      </div>
+                      <div className="text-xs font-semibold text-primary-600 bg-primary-50 px-2 py-1 rounded-full">
+                        Total
+                      </div>
                     </div>
-                    <div className="text-xs font-semibold text-danger-600 bg-danger-50 px-2 py-1 rounded-full">
-                      -{Math.round((mockStats.pendingPayments / mockStats.monthlyRevenue) * 100)}%
+                    <div className="space-y-1">
+                      <p className="text-3xl font-bold text-gray-900">{stats.totalClasses}</p>
+                      <p className="text-sm text-gray-600">Classes</p>
                     </div>
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-3xl font-bold text-gray-900">{(mockStats.monthlyRevenue / 1000).toFixed(0)}K</p>
-                    <p className="text-sm text-gray-600">Revenus mensuels (MRU)</p>
                   </div>
                 </div>
-              </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                  {[1, 2, 3, 4].map((i) => (
+                    <div key={i} className="glass p-6 rounded-2xl">
+                      <div className="animate-pulse">
+                        <div className="h-6 bg-gray-200 rounded mb-4"></div>
+                        <div className="h-8 bg-gray-200 rounded mb-2"></div>
+                        <div className="h-4 bg-gray-200 rounded"></div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 {/* Activités récentes modernes */}
@@ -340,39 +374,41 @@ export default function Dashboard() {
                     </Button>
                   </div>
                   <div className="space-y-3">
-                    {mockRecentActivities.map((activity, index) => (
-                      <div
-                        key={activity.id}
-                        className="flex items-center justify-between p-4 bg-white/50 rounded-xl hover:bg-white/80 transition-all duration-200 group cursor-pointer hover:shadow-soft"
-                        style={{
-                          animationDelay: `${index * 100}ms`
-                        }}
-                      >
-                        <div className="flex items-center space-x-4">
-                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-                            activity.status === 'urgent' ? 'bg-danger-100' :
-                            activity.status === 'important' ? 'bg-accent-100' :
-                            'bg-primary-100'
-                          }`}>
-                            {getActivityIcon(activity.type)}
-                          </div>
-                          <div>
-                            <p className="text-sm font-semibold text-gray-900 group-hover:text-primary-600 transition-colors">
-                              {activity.student}
-                            </p>
-                            <p className="text-xs text-gray-500">{activity.class} • {activity.time}</p>
+                    {stats && stats.recentActivities.length > 0 ? (
+                      stats.recentActivities.map((activity, index) => (
+                        <div
+                          key={activity.id}
+                          className="flex items-center justify-between p-4 bg-white/50 rounded-xl hover:bg-white/80 transition-all duration-200 group cursor-pointer hover:shadow-soft"
+                          style={{
+                            animationDelay: `${index * 100}ms`
+                          }}
+                        >
+                          <div className="flex items-center space-x-4">
+                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center bg-primary-100`}>
+                              <div className={`w-2 h-2 bg-${activity.color}-600 rounded-full`}></div>
+                            </div>
+                            <div>
+                              <p className="text-sm font-semibold text-gray-900 group-hover:text-primary-600 transition-colors">
+                                {activity.title}
+                              </p>
+                              <p className="text-xs text-gray-500">{activity.description}</p>
+                              <p className="text-xs text-gray-400">
+                                {new Date(activity.timestamp).toLocaleDateString('fr-FR', {
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })}
+                              </p>
+                            </div>
                           </div>
                         </div>
-                        <span className={`text-xs font-semibold px-3 py-1 rounded-full ${
-                          activity.status === 'urgent' ? 'bg-danger-100 text-danger-700' :
-                          activity.status === 'important' ? 'bg-accent-100 text-accent-700' :
-                          'bg-primary-100 text-primary-700'
-                        }`}>
-                          {activity.status === 'urgent' ? 'Urgent' :
-                           activity.status === 'important' ? 'Important' : 'Normal'}
-                        </span>
+                      ))
+                    ) : (
+                      <div className="text-center py-8">
+                        <p className="text-sm text-gray-500">
+                          {stats ? 'Aucune activité récente' : 'Chargement des activités...'}
+                        </p>
                       </div>
-                    ))}
+                    )}
                   </div>
                 </div>
 
@@ -449,63 +485,15 @@ export default function Dashboard() {
             <TabsContent value="teachers" className="space-y-6">
               <TeacherManagement />
             </TabsContent>
+
+            {/* Matières */}
+            <TabsContent value="subjects" className="space-y-6">
+              <SubjectManagement />
+            </TabsContent>
+
           {/* Classes */}
             <TabsContent value="classes" className="space-y-6">
-              <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-bold text-gray-900">Gestion des Classes</h2>
-                <Button>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Nouvelle classe
-                </Button>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {mockClasses.map((classItem) => (
-                  <Card key={classItem.id} className="hover:shadow-md transition-shadow">
-                    <CardHeader>
-                      <div className="flex items-center justify-between">
-                        <CardTitle className="text-lg">{classItem.name}</CardTitle>
-                        <Badge variant="outline">{classItem.level}</Badge>
-                      </div>
-                      <CardDescription>Professeur: {classItem.teacher}</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-2">
-                        <div className="flex justify-between text-sm">
-                          <span>Élèves inscrits:</span>
-                          <span className="font-medium">{classItem.students}</span>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                          <span>Capacité:</span>
-                          <span className="font-medium">{classItem.capacity}</span>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                          <span>Taux de remplissage:</span>
-                          <span className="font-medium">
-                            {Math.round((classItem.students / classItem.capacity) * 100)}%
-                          </span>
-                        </div>
-                        <div className="w-full h-2 bg-gray-200 rounded-full mt-2">
-                          <div 
-                            className="h-2 bg-blue-500 rounded-full"
-                            style={{ width: `${(classItem.students / classItem.capacity) * 100}%` }}
-                          />
-                        </div>
-                      </div>
-                      <div className="flex space-x-2 mt-4">
-                        <Button variant="outline" size="sm" className="flex-1">
-                          <Eye className="h-4 w-4 mr-1" />
-                          Voir
-                        </Button>
-                        <Button variant="outline" size="sm" className="flex-1">
-                          <Edit className="h-4 w-4 mr-1" />
-                          Modifier
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
+              <ClassManagement />
             </TabsContent>
 
             {/* Notes */}
@@ -524,40 +512,41 @@ export default function Dashboard() {
             <TabsContent value="finance" className="space-y-6">
               <FinanceManagement />
             </TabsContent>
-          {/* Autres onglets avec contenu placeholder */}
-            {['notifications', 'settings'].map((tab) => (
-              <TabsContent key={tab} value={tab} className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-2xl font-bold text-gray-900">
-                    {menuItems.find(item => item.id === tab)?.label}
-                  </h2>
-                  <Button>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Nouveau
-                  </Button>
-                </div>
-                
-                <Card>
-                  <CardContent className="p-6">
-                    <div className="text-center py-12">
-                      <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <Settings className="h-8 w-8 text-gray-400" />
-                      </div>
-                      <h3 className="text-lg font-medium text-gray-900 mb-2">
-                        Module {menuItems.find(item => item.id === tab)?.label}
-                      </h3>
-                      <p className="text-gray-500 mb-4">
-                        Cette fonctionnalité est en cours de développement.
-                      </p>
-                      <p className="text-sm text-gray-400">
-                        Le module complet sera disponible avec la gestion des {menuItems.find(item => item.id === tab)?.label.toLowerCase()},
-                        les rapports détaillés et les fonctionnalités avancées.
-                      </p>
+
+            {/* Notifications */}
+            <TabsContent value="notifications" className="space-y-6">
+              <div className="flex items-center justify-between">
+                <h2 className="text-2xl font-bold text-gray-900">Notifications</h2>
+                <Button>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Nouvelle notification
+                </Button>
+              </div>
+
+              <Card>
+                <CardContent className="p-6">
+                  <div className="text-center py-12">
+                    <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <Bell className="h-8 w-8 text-blue-600" />
                     </div>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-            ))}
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">
+                      Centre de notifications
+                    </h3>
+                    <p className="text-gray-500 mb-4">
+                      Gérez toutes les notifications de l'établissement
+                    </p>
+                    <p className="text-sm text-gray-400">
+                      Recevez des alertes sur les présences, les notes, les paiements et plus encore.
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Paramètres */}
+            <TabsContent value="settings" className="space-y-6">
+              <SettingsManagement />
+            </TabsContent>
           </Tabs>
         </main>
       </div>

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
+import { useToast } from '@/hooks/use-toast'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -10,10 +11,10 @@ import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
-import { 
-  CheckCircle, 
-  XCircle, 
-  Clock, 
+import {
+  CheckCircle,
+  XCircle,
+  Clock,
   AlertTriangle,
   Calendar,
   Users,
@@ -26,7 +27,8 @@ import {
   Eye,
   Edit,
   Save,
-  BarChart3
+  BarChart3,
+  Trash2
 } from 'lucide-react'
 
 interface Student {
@@ -89,6 +91,7 @@ const mockAttendances: Attendance[] = [
 ]
 
 export default function AttendanceManagement() {
+  const { toast } = useToast()
   const [selectedClass, setSelectedClass] = useState('6')
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
   const [attendances, setAttendances] = useState<Attendance[]>(mockAttendances)
@@ -99,6 +102,8 @@ export default function AttendanceManagement() {
   const [activeTab, setActiveTab] = useState('marking')
   const [isSaving, setIsSaving] = useState(false)
   const [attendanceData, setAttendanceData] = useState<{[key: string]: {status: string, reason?: string}}>({})
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [attendanceToDelete, setAttendanceToDelete] = useState<Attendance | null>(null)
 
   useEffect(() => {
     // Initialiser les données de présence pour la date sélectionnée
@@ -154,11 +159,11 @@ export default function AttendanceManagement() {
 
   const saveAttendance = async () => {
     setIsSaving(true)
-    
+
     try {
       // Simuler l'appel API
       await new Promise(resolve => setTimeout(resolve, 1000))
-      
+
       const attendanceArray = Object.entries(attendanceData).map(([studentId, data]) => ({
         studentId,
         status: data.status,
@@ -179,15 +184,41 @@ export default function AttendanceManagement() {
       })
 
       setAttendances(prev => {
-        const filtered = prev.filter(a => 
+        const filtered = prev.filter(a =>
           new Date(a.date).toDateString() !== new Date(selectedDate).toDateString()
         )
         return [...newAttendances, ...filtered]
       })
 
-      alert('Présences enregistrées avec succès!')
+      // Show success toast with detailed summary
+      const statusCounts = attendanceArray.reduce((acc, curr) => {
+        acc[curr.status] = (acc[curr.status] || 0) + 1
+        return acc
+      }, {} as Record<string, number>)
+
+      const statusLabels = {
+        PRESENT: 'Présents',
+        ABSENT: 'Absents',
+        LATE: 'En retard',
+        EXCUSED: 'Justifiés'
+      }
+
+      const summary = Object.entries(statusCounts)
+        .map(([status, count]) => `${statusLabels[status as keyof typeof statusLabels]}: ${count}`)
+        .join(', ')
+
+      toast({
+        title: "Présences enregistrées avec succès",
+        description: `Les présences du ${new Date(selectedDate).toLocaleDateString('fr-FR')} ont été enregistrées. ${summary}`,
+        variant: "success",
+      })
+
     } catch (error) {
-      alert('Erreur lors de l\'enregistrement des présences')
+      toast({
+        title: "Erreur lors de l'enregistrement",
+        description: "Une erreur est survenue lors de l'enregistrement des présences. Veuillez réessayer.",
+        variant: "destructive",
+      })
     } finally {
       setIsSaving(false)
     }
@@ -224,10 +255,10 @@ export default function AttendanceManagement() {
   }
 
   const getAttendanceStats = () => {
-    const todayAttendances = attendances.filter(a => 
+    const todayAttendances = attendances.filter(a =>
       new Date(a.date).toDateString() === new Date(selectedDate).toDateString()
     )
-    
+
     const total = todayAttendances.length
     const present = todayAttendances.filter(a => a.status === 'PRESENT').length
     const absent = todayAttendances.filter(a => a.status === 'ABSENT').length
@@ -235,6 +266,41 @@ export default function AttendanceManagement() {
     const excused = todayAttendances.filter(a => a.status === 'EXCUSED').length
 
     return { total, present, absent, late, excused }
+  }
+
+  const handleDeleteAttendance = (attendanceId: string) => {
+    const attendance = attendances.find(a => a.id === attendanceId)
+    if (attendance) {
+      setAttendanceToDelete(attendance)
+      setDeleteDialogOpen(true)
+    }
+  }
+
+  const confirmDeleteAttendance = () => {
+    if (attendanceToDelete) {
+      setAttendances(attendances.filter(attendance => attendance.id !== attendanceToDelete.id))
+      setFilteredAttendances(filteredAttendances.filter(attendance => attendance.id !== attendanceToDelete.id))
+
+      const statusLabels = {
+        PRESENT: 'Présent',
+        ABSENT: 'Absent',
+        LATE: 'En retard',
+        EXCUSED: 'Justifié'
+      }
+
+      toast({
+        title: "Suppression réussie",
+        description: `La présence de ${attendanceToDelete.student.firstName} ${attendanceToDelete.student.lastName} (${statusLabels[attendanceToDelete.status]} du ${new Date(attendanceToDelete.date).toLocaleDateString('fr-FR')}) a été supprimée.`,
+        variant: "success",
+      })
+      setDeleteDialogOpen(false)
+      setAttendanceToDelete(null)
+    }
+  }
+
+  const cancelDeleteAttendance = () => {
+    setDeleteDialogOpen(false)
+    setAttendanceToDelete(null)
   }
 
   const stats = getAttendanceStats()
@@ -509,6 +575,14 @@ export default function AttendanceManagement() {
                             <Button variant="ghost" size="sm">
                               <Edit className="h-4 w-4" />
                             </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-red-600"
+                              onClick={() => handleDeleteAttendance(attendance.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
                           </div>
                         </td>
                       </tr>
@@ -577,6 +651,81 @@ export default function AttendanceManagement() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Modal de confirmation de suppression */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-600">
+              <AlertTriangle className="h-5 w-5" />
+              Confirmer la suppression
+            </DialogTitle>
+            <DialogDescription>
+              Êtes-vous sûr de vouloir supprimer cette présence ?
+              <br />
+              <span className="text-red-600">
+                Cette action est irréversible et la présence sera définitivement supprimée du système.
+              </span>
+            </DialogDescription>
+          </DialogHeader>
+          {attendanceToDelete && (
+            <div className="py-4">
+              <div className="bg-gray-50 rounded-lg p-4 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-gray-600">Élève :</span>
+                  <span className="text-sm text-gray-900">
+                    {attendanceToDelete.student.firstName} {attendanceToDelete.student.lastName}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-gray-600">Statut :</span>
+                  <div className="flex items-center space-x-2">
+                    {getStatusIcon(attendanceToDelete.status)}
+                    {getStatusBadge(attendanceToDelete.status)}
+                  </div>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-gray-600">Date :</span>
+                  <span className="text-sm text-gray-900">
+                    {new Date(attendanceToDelete.date).toLocaleDateString('fr-FR')}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-gray-600">Classe :</span>
+                  <span className="text-sm text-gray-900">
+                    {attendanceToDelete.student.class?.name}
+                  </span>
+                </div>
+                {attendanceToDelete.reason && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-gray-600">Raison :</span>
+                    <span className="text-sm text-gray-900">
+                      {attendanceToDelete.reason}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+          <div className="flex gap-3 pt-4">
+            <Button
+              variant="outline"
+              onClick={cancelDeleteAttendance}
+              className="flex-1"
+            >
+              Annuler
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={confirmDeleteAttendance}
+              className="flex-1 flex items-center gap-2"
+            >
+              <Trash2 className="h-4 w-4" />
+              Supprimer
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

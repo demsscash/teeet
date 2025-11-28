@@ -1,72 +1,277 @@
-// ERP Scolaire Mauritanie - Schema de données
-// Système de gestion scolaire adapté au contexte mauritanien
-
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
-// Établissement scolaire
 model School {
-  id          String   @id @default(cuid())
-  name        String
-  nameAr      String?  // Nom en arabe
-  address     String
-  phone       String
-  email       String?
-  logo        String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
-  // Relations
-  users       User[]
-  students    Student[]
-  classes     SchoolClass[]
-  subjects    Subject[]
-  grades      Grade[]
-  observations Observation[]
-  attendances Attendance[]
+  id            String         @id @default(cuid())
+  name          String
+  nameAr        String?
+  address       String
+  phone         String
+  email         String?
+  logo          String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  attendances   Attendance[]
+  classes       SchoolClass[]
+  grades        Grade[]
   notifications Notification[]
-  
+  observations  Observation[]
+  students      Student[]
+  subjects      Subject[]
+  subjectTemplates SubjectTemplate[]
+  classSubjects ClassSubject[]
+  users         User[]
+
   @@map("schools")
 }
 
-// Utilisateurs du système
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  password  String
-  firstName String
-  lastName  String
-  firstNameAr String? // Prénom en arabe
-  lastNameAr  String? // Nom en arabe
-  phone     String?
-  role      UserRole @default(SECRETARY)
-  isActive  Boolean  @default(true)
-  lastLogin DateTime?
-  schoolId  String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  
-  // Relations
-  school    School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  teacherClasses TeacherClass[]
-  taughtSubjects Subject[]
-  grades     Grade[]
-  observations Observation[]
-  attendances Attendance[]
-  notifications Notification[]
+  id             String          @id @default(cuid())
+  email          String          @unique
+  password       String
+  firstName      String
+  lastName       String
+  firstNameAr    String?
+  lastNameAr     String?
+  phone          String?
+  role           UserRole        @default(SECRETARY)
+  isActive       Boolean         @default(true)
+  lastLogin      DateTime?
+  schoolId       String
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  attendances    Attendance[]
+  managedClasses SchoolClass[]   @relation("ClassTeacher")
+  grades         Grade[]
+  notifications  Notification[]
+  observations   Observation[]
   parentStudents ParentStudent[]
-  managedClasses SchoolClass[] @relation("ClassTeacher")
-  
+  taughtSubjects Subject[]
+  classSubjects ClassSubject[] @relation("ClassSubjects")
+  teacherClasses TeacherClass[]
+  school         School          @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
   @@map("users")
 }
 
-// Rôles utilisateurs
+model Student {
+  id            String          @id @default(cuid())
+  studentNumber String          @unique
+  firstName     String
+  lastName      String
+  firstNameAr   String?
+  lastNameAr    String?
+  dateOfBirth   DateTime
+  placeOfBirth  String?
+  gender        Gender
+  address       String?
+  photo         String?
+  isActive      Boolean         @default(true)
+  schoolId      String
+  classId       String?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  attendances   Attendance[]
+  grades        Grade[]
+  notifications Notification[]
+  observations  Observation[]
+  parents       ParentStudent[]
+  class         SchoolClass?    @relation(fields: [classId], references: [id])
+  school        School          @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@map("students")
+}
+
+model SchoolClass {
+  id             String         @id @default(cuid())
+  name           String
+  level          String
+  capacity       Int            @default(40)
+  schoolId       String
+  teacherId      String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  school         School         @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  teacher        User?          @relation("ClassTeacher", fields: [teacherId], references: [id])
+  students       Student[]
+  subjects       Subject[]
+  classSubjects  ClassSubject[]
+  teacherClasses TeacherClass[]
+
+  @@map("classes")
+}
+
+model SubjectTemplate {
+  id          String         @id @default(cuid())
+  name        String
+  nameAr      String?
+  code        String?        @unique
+  description String?
+  maxScore    Int            @default(20)
+  coefficient Int            @default(1)
+  color       String?        @default("#6366f1")
+  isActive    Boolean        @default(true)
+  schoolId    String
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  classSubjects ClassSubject[]
+  school      School         @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@map("subject_templates")
+}
+
+model ClassSubject {
+  id          String         @id @default(cuid())
+  classId     String
+  teacherId   String?
+  subjectId   String
+  schoolId    String
+  maxScore    Int?
+  coefficient Int?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  class       SchoolClass    @relation(fields: [classId], references: [id], onDelete: Cascade)
+  teacher     User?          @relation("ClassSubjects", fields: [teacherId], references: [id])
+  subject     SubjectTemplate @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  grades      Grade[]
+  school      School         @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@unique([classId, subjectId])
+  @@map("class_subjects")
+}
+
+model Subject {
+  id          String      @id @default(cuid())
+  name        String
+  nameAr      String?
+  maxScore    Int
+  coefficient Int         @default(1)
+  schoolId    String
+  classId     String
+  teacherId   String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  grades      Grade[]
+  class       SchoolClass @relation(fields: [classId], references: [id], onDelete: Cascade)
+  school      School      @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  teacher     User?       @relation(fields: [teacherId], references: [id])
+
+  @@map("subjects")
+}
+
+model Grade {
+  id         String   @id @default(cuid())
+  score      Float
+  maxScore   Float
+  percentage Float
+  term       String
+  examType   String
+  comment    String?
+  studentId  String
+  subjectId  String?
+  classSubjectId String?
+  teacherId  String
+  schoolId   String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  school     School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  student    Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  subject    Subject? @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  classSubject ClassSubject? @relation(fields: [classSubjectId], references: [id], onDelete: Cascade)
+  teacher    User     @relation(fields: [teacherId], references: [id])
+
+  @@map("grades")
+}
+
+model Observation {
+  id        String          @id @default(cuid())
+  content   String
+  contentAr String?
+  type      ObservationType
+  severity  Severity        @default(INFO)
+  studentId String
+  teacherId String
+  schoolId  String
+  isRead    Boolean         @default(false)
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+  school    School          @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  student   Student         @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  teacher   User            @relation(fields: [teacherId], references: [id])
+
+  @@map("observations")
+}
+
+model Attendance {
+  id        String           @id @default(cuid())
+  date      DateTime
+  status    AttendanceStatus
+  reason    String?
+  studentId String
+  teacherId String?
+  schoolId  String
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+  school    School           @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  student   Student          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  teacher   User?            @relation(fields: [teacherId], references: [id])
+
+  @@unique([studentId, date])
+  @@map("attendances")
+}
+
+model Notification {
+  id          String              @id @default(cuid())
+  title       String
+  content     String
+  contentAr   String?
+  type        NotificationType
+  channel     NotificationChannel
+  recipientId String
+  studentId   String?
+  schoolId    String
+  isRead      Boolean             @default(false)
+  sentAt      DateTime?
+  createdAt   DateTime            @default(now())
+  recipient   User                @relation(fields: [recipientId], references: [id])
+  school      School              @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  student     Student?            @relation(fields: [studentId], references: [id])
+
+  @@map("notifications")
+}
+
+model ParentStudent {
+  id        String   @id @default(cuid())
+  parentId  String
+  studentId String
+  relation  String
+  createdAt DateTime @default(now())
+  parent    User     @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  student   Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([parentId, studentId])
+  @@map("parent_student")
+}
+
+model TeacherClass {
+  id        String      @id @default(cuid())
+  teacherId String
+  classId   String
+  role      String      @default("TEACHER")
+  createdAt DateTime    @default(now())
+  class     SchoolClass @relation(fields: [classId], references: [id], onDelete: Cascade)
+  teacher   User        @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+
+  @@unique([teacherId, classId])
+  @@map("teacher_class")
+}
+
 enum UserRole {
   DIRECTOR
   SECRETARY
@@ -74,130 +279,9 @@ enum UserRole {
   PARENT
 }
 
-// Élèves
-model Student {
-  id            String   @id @default(cuid())
-  studentNumber String   @unique // Format: ANNÉE-SÉQUENCE
-  firstName     String
-  lastName      String
-  firstNameAr   String?  // Prénom en arabe
-  lastNameAr    String?  // Nom en arabe
-  dateOfBirth   DateTime
-  placeOfBirth  String?
-  gender        Gender
-  address       String?
-  photo         String?
-  isActive      Boolean  @default(true)
-  schoolId      String
-  classId       String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  
-  // Relations
-  school        School     @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  class         SchoolClass? @relation(fields: [classId], references: [id])
-  grades        Grade[]
-  observations  Observation[]
-  attendances   Attendance[]
-  parents       ParentStudent[]
-  notifications Notification[]
-  
-  @@map("students")
-}
-
 enum Gender {
   MALE
   FEMALE
-}
-
-// Classes
-model SchoolClass {
-  id          String   @id @default(cuid())
-  name        String   // CP1, CP2, CE1, CE2, CM1, CM2
-  level       String   // Niveau: Primaire
-  capacity    Int      @default(40)
-  schoolId    String
-  teacherId   String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
-  // Relations
-  school      School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  teacher     User?    @relation("ClassTeacher", fields: [teacherId], references: [id])
-  students    Student[]
-  subjects    Subject[]
-  teacherClasses TeacherClass[]
-  
-  @@map("classes")
-}
-
-// Matières avec barèmes mauritaniens
-model Subject {
-  id          String   @id @default(cuid())
-  name        String   // Mathématiques, Arabe, Français, etc.
-  nameAr      String?  // Nom en arabe
-  maxScore    Int      // Barème maximum selon le système mauritanien
-  coefficient Int      @default(1)
-  schoolId    String
-  classId     String
-  teacherId   String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
-  // Relations
-  school      School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  class       SchoolClass @relation(fields: [classId], references: [id], onDelete: Cascade)
-  teacher     User?    @relation(fields: [teacherId], references: [id])
-  grades      Grade[]
-  
-  @@map("subjects")
-}
-
-// Notes (Système mauritanien)
-model Grade {
-  id          String   @id @default(cuid())
-  score       Float    // Note obtenue
-  maxScore    Float    // Barème de la matière
-  percentage  Float    // Pourcentage calculé automatiquement
-  term        String   // Trimestre: T1, T2, T3
-  examType    String   // DS, Composition, etc.
-  comment     String?
-  studentId   String
-  subjectId   String
-  teacherId   String
-  schoolId    String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
-  // Relations
-  student     Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  subject     Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
-  teacher     User     @relation(fields: [teacherId], references: [id])
-  school      School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  
-  @@map("grades")
-}
-
-// Observations (Cahier d'observation numérique)
-model Observation {
-  id          String       @id @default(cuid())
-  content     String
-  contentAr   String?      // Contenu en arabe
-  type        ObservationType
-  severity    Severity     @default(INFO)
-  studentId   String
-  teacherId   String
-  schoolId    String
-  isRead      Boolean      @default(false)
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-  
-  // Relations
-  student     Student      @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  teacher     User         @relation(fields: [teacherId], references: [id])
-  school      School       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  
-  @@map("observations")
 }
 
 enum ObservationType {
@@ -214,55 +298,11 @@ enum Severity {
   URGENT
 }
 
-// Présences
-model Attendance {
-  id          String   @id @default(cuid())
-  date        DateTime
-  status      AttendanceStatus
-  reason      String?
-  studentId   String
-  teacherId   String?
-  schoolId    String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
-  // Relations
-  student     Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  teacher     User?    @relation(fields: [teacherId], references: [id])
-  school      School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  
-  @@unique([studentId, date])
-  @@map("attendances")
-}
-
 enum AttendanceStatus {
   PRESENT
   ABSENT
   LATE
   EXCUSED
-}
-
-// Notifications
-model Notification {
-  id          String           @id @default(cuid())
-  title       String
-  content     String
-  contentAr   String?          // Contenu en arabe
-  type        NotificationType
-  channel     NotificationChannel
-  recipientId String           // ID de l'utilisateur destinataire
-  studentId   String?          // ID de l'élève concerné (optionnel)
-  schoolId    String
-  isRead      Boolean          @default(false)
-  sentAt      DateTime?
-  createdAt   DateTime         @default(now())
-  
-  // Relations
-  school      School           @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  recipient   User             @relation(fields: [recipientId], references: [id])
-  student     Student?         @relation(fields: [studentId], references: [id])
-  
-  @@map("notifications")
 }
 
 enum NotificationType {
@@ -279,36 +319,4 @@ enum NotificationChannel {
   EMAIL
   PUSH
   IN_APP
-}
-
-// Relation Parents-Élèves
-model ParentStudent {
-  id        String   @id @default(cuid())
-  parentId  String
-  studentId String
-  relation  String   // Père, Mère, Tuteur, etc.
-  createdAt DateTime @default(now())
-  
-  // Relations
-  parent    User     @relation(fields: [parentId], references: [id], onDelete: Cascade)
-  student   Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  
-  @@unique([parentId, studentId])
-  @@map("parent_student")
-}
-
-// Relation Professeurs-Classes
-model TeacherClass {
-  id        String   @id @default(cuid())
-  teacherId String
-  classId   String
-  role      String   @default("TEACHER") // Professeur principal, etc.
-  createdAt DateTime @default(now())
-  
-  // Relations
-  teacher   User       @relation(fields: [teacherId], references: [id], onDelete: Cascade)
-  class     SchoolClass @relation(fields: [classId], references: [id], onDelete: Cascade)
-  
-  @@unique([teacherId, classId])
-  @@map("teacher_class")
 }

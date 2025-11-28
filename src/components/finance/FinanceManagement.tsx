@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useToast } from '@/hooks/use-toast'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -128,6 +129,7 @@ const mockStudents: Student[] = [
 ]
 
 export default function FinanceManagement() {
+  const { toast } = useToast()
   const [payments, setPayments] = useState<Payment[]>(mockPayments)
   const [filteredPayments, setFilteredPayments] = useState<Payment[]>(mockPayments)
   const [searchTerm, setSearchTerm] = useState('')
@@ -135,6 +137,8 @@ export default function FinanceManagement() {
   const [selectedStatus, setSelectedStatus] = useState<string>('all')
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
   const [activeTab, setActiveTab] = useState('payments')
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [financeToDelete, setFinanceToDelete] = useState<Payment | null>(null)
 
   // Formulaire d'ajout
   const [formData, setFormData] = useState({
@@ -174,7 +178,7 @@ export default function FinanceManagement() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     const student = mockStudents.find(s => s.id === formData.studentId)
     if (!student) return
 
@@ -191,7 +195,21 @@ export default function FinanceManagement() {
     }
 
     setPayments([newPayment, ...payments])
-    
+
+    // Show success toast
+    const typeLabels = {
+      TUITION: 'Scolarité',
+      SUPPLIES: 'Fournitures',
+      SPORTS: 'Sports',
+      OTHER: 'Autre'
+    }
+
+    toast({
+      title: "Paiement ajouté avec succès",
+      description: `Un paiement de ${parseFloat(formData.amount).toLocaleString()} MRU pour ${typeLabels[formData.type as keyof typeof typeLabels]} a été ajouté pour ${student.firstName} ${student.lastName}${formData.description ? ` - ${formData.description}` : ''}${formData.paymentMethod ? ` - Méthode: ${formData.paymentMethod === 'CASH' ? 'Espèces' : formData.paymentMethod === 'CARD' ? 'Carte' : formData.paymentMethod === 'BANK_TRANSFER' ? 'Virement' : 'Mobile Money'}` : ''}`,
+      variant: "success",
+    })
+
     // Reset form
     setFormData({
       studentId: '',
@@ -205,16 +223,79 @@ export default function FinanceManagement() {
   }
 
   const updatePaymentStatus = (paymentId: string, status: string) => {
-    setPayments(payments.map(payment =>
-      payment.id === paymentId
-        ? { 
-            ...payment, 
+    const payment = payments.find(p => p.id === paymentId)
+    if (!payment) return
+
+    setPayments(payments.map(p =>
+      p.id === paymentId
+        ? {
+            ...p,
             status: status as any,
             paidDate: status === 'PAID' ? new Date().toISOString() : undefined,
-            paidAmount: status === 'PAID' ? payment.amount : undefined
+            paidAmount: status === 'PAID' ? p.amount : undefined
           }
-        : payment
+        : p
     ))
+
+    // Show status update toast
+    const statusLabels = {
+      PENDING: 'En attente',
+      PAID: 'Payé',
+      OVERDUE: 'En retard',
+      CANCELLED: 'Annulé'
+    }
+
+    const typeLabels = {
+      TUITION: 'Scolarité',
+      SUPPLIES: 'Fournitures',
+      SPORTS: 'Sports',
+      OTHER: 'Autre'
+    }
+
+    if (status === 'PAID') {
+      toast({
+        title: "Paiement marqué comme payé",
+        description: `Le paiement de ${payment.amount.toLocaleString()} MRU pour ${typeLabels[payment.type]} de ${payment.student.firstName} ${payment.student.lastName} a été marqué comme payé`,
+        variant: "success",
+      })
+    } else if (status === 'OVERDUE') {
+      toast({
+        title: "Paiement marqué en retard",
+        description: `Le paiement de ${payment.amount.toLocaleString()} MRU pour ${typeLabels[payment.type]} de ${payment.student.firstName} ${payment.student.lastName} est maintenant en retard`,
+        variant: "destructive",
+      })
+    } else {
+      toast({
+        title: "Statut du paiement mis à jour",
+        description: `Le statut du paiement a été changé vers "${statusLabels[status as keyof typeof statusLabels]}"`,
+        variant: "default",
+      })
+    }
+  }
+
+  const handleDeleteFinance = (payment: Payment) => {
+    setFinanceToDelete(payment)
+    setDeleteDialogOpen(true)
+  }
+
+  const confirmDeleteFinance = () => {
+    if (!financeToDelete) return
+
+    setPayments(payments.filter(payment => payment.id !== financeToDelete.id))
+
+    toast({
+      title: 'Paiement supprimé avec succès',
+      description: `Le paiement de ${financeToDelete.amount.toLocaleString()} MRU pour ${financeToDelete.student.firstName} ${financeToDelete.student.lastName} a été supprimé.`,
+      variant: 'success'
+    })
+
+    setDeleteDialogOpen(false)
+    setFinanceToDelete(null)
+  }
+
+  const cancelDeleteFinance = () => {
+    setDeleteDialogOpen(false)
+    setFinanceToDelete(null)
   }
 
   const getTypeIcon = (type: string) => {
@@ -547,8 +628,8 @@ export default function FinanceManagement() {
                               <Eye className="h-4 w-4" />
                             </Button>
                             {payment.status === 'PENDING' && (
-                              <Button 
-                                variant="ghost" 
+                              <Button
+                                variant="ghost"
                                 size="sm"
                                 onClick={() => updatePaymentStatus(payment.id, 'PAID')}
                                 className="text-green-600"
@@ -557,8 +638,8 @@ export default function FinanceManagement() {
                               </Button>
                             )}
                             {payment.status === 'PENDING' && (
-                              <Button 
-                                variant="ghost" 
+                              <Button
+                                variant="ghost"
                                 size="sm"
                                 onClick={() => updatePaymentStatus(payment.id, 'OVERDUE')}
                                 className="text-red-600"
@@ -566,6 +647,14 @@ export default function FinanceManagement() {
                                 <XCircle className="h-4 w-4" />
                               </Button>
                             )}
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDeleteFinance(payment)}
+                              className="text-red-600 hover:text-red-800 hover:bg-red-50"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
                           </div>
                         </td>
                       </tr>
@@ -636,6 +725,124 @@ export default function FinanceManagement() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Professional Delete Modal */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-600">
+              <AlertTriangle className="h-5 w-5" />
+              Supprimer le paiement
+            </DialogTitle>
+            <DialogDescription>
+              Êtes-vous sûr de vouloir supprimer ce paiement ? Cette action est irréversible.
+            </DialogDescription>
+          </DialogHeader>
+
+          {financeToDelete && (
+            <div className="py-4 space-y-3">
+              <div className="bg-gray-50 p-3 rounded-lg">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="h-10 w-10 bg-blue-100 rounded-full flex items-center justify-center">
+                    <span className="text-sm font-medium text-blue-600">
+                      {financeToDelete.student.firstName[0]}{financeToDelete.student.lastName[0]}
+                    </span>
+                  </div>
+                  <div>
+                    <p className="font-medium text-gray-900">
+                      {financeToDelete.student.firstName} {financeToDelete.student.lastName}
+                    </p>
+                    <p className="text-sm text-gray-500">
+                      {financeToDelete.student.studentNumber}
+                      {financeToDelete.student.class && ` • ${financeToDelete.student.class.name}`}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Type de paiement:</span>
+                    <div className="flex items-center gap-1">
+                      {getTypeIcon(financeToDelete.type)}
+                      <span className="font-medium">{getTypeLabel(financeToDelete.type)}</span>
+                    </div>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Montant:</span>
+                    <span className="font-medium text-red-600">
+                      {financeToDelete.amount.toLocaleString()} MRU
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Date d'échéance:</span>
+                    <span className="font-medium">
+                      {new Date(financeToDelete.dueDate).toLocaleDateString('fr-FR')}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Méthode de paiement:</span>
+                    <div className="flex items-center gap-1">
+                      {financeToDelete.paymentMethod && getPaymentMethodIcon(financeToDelete.paymentMethod)}
+                      <span className="text-sm">
+                        {financeToDelete.paymentMethod ?
+                          financeToDelete.paymentMethod === 'CASH' ? 'Espèces' :
+                          financeToDelete.paymentMethod === 'CARD' ? 'Carte' :
+                          financeToDelete.paymentMethod === 'BANK_TRANSFER' ? 'Virement' :
+                          financeToDelete.paymentMethod === 'MOBILE_MONEY' ? 'Mobile Money' : ''
+                          : '-'
+                        }
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Statut:</span>
+                    {getStatusBadge(financeToDelete.status)}
+                  </div>
+                  {financeToDelete.description && (
+                    <div className="flex justify-between items-start">
+                      <span className="text-sm text-gray-600">Description:</span>
+                      <span className="text-sm text-right max-w-[180px]">
+                        {financeToDelete.description}
+                      </span>
+                    </div>
+                  )}
+                  {financeToDelete.paidDate && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">Date de paiement:</span>
+                      <span className="font-medium">
+                        {new Date(financeToDelete.paidDate).toLocaleDateString('fr-FR')}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                <p className="text-sm text-red-800">
+                  <strong>Attention:</strong> La suppression de ce paiement affectera les enregistrements financiers et ne pourra pas être annulée.
+                </p>
+              </div>
+            </div>
+          )}
+
+          <div className="flex justify-end gap-3 mt-6">
+            <Button
+              variant="outline"
+              onClick={cancelDeleteFinance}
+              className="border-gray-300 hover:bg-gray-50"
+            >
+              Annuler
+            </Button>
+            <Button
+              onClick={confirmDeleteFinance}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Supprimer
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

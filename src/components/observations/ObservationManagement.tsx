@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
+import { useToast } from '@/hooks/use-toast'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -11,10 +12,10 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
 import { Checkbox } from '@/components/ui/checkbox'
-import { 
-  Plus, 
-  MessageSquare, 
-  AlertTriangle, 
+import {
+  Plus,
+  MessageSquare,
+  AlertTriangle,
   CheckCircle,
   Info,
   AlertCircle,
@@ -130,6 +131,7 @@ const OBSERVATION_TEMPLATES = {
 }
 
 export default function ObservationManagement() {
+  const { toast } = useToast()
   const [observations, setObservations] = useState<Observation[]>(mockObservations)
   const [filteredObservations, setFilteredObservations] = useState<Observation[]>(mockObservations)
   const [selectedStudent, setSelectedStudent] = useState<string>('all')
@@ -138,6 +140,8 @@ export default function ObservationManagement() {
   const [searchTerm, setSearchTerm] = useState('')
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
   const [activeTab, setActiveTab] = useState('list')
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [observationToDelete, setObservationToDelete] = useState<Observation | null>(null)
 
   // Formulaire d'ajout
   const [formData, setFormData] = useState({
@@ -181,7 +185,7 @@ export default function ObservationManagement() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     const student = mockStudents.find(s => s.id === formData.studentId)
     if (!student) return
 
@@ -198,7 +202,28 @@ export default function ObservationManagement() {
     }
 
     setObservations([newObservation, ...observations])
-    
+
+    // Show success toast
+    const typeLabels = {
+      POSITIVE: 'Positif',
+      PEDAGOGICAL: 'Pédagogique',
+      BEHAVIOR: 'Comportement',
+      NEGATIVE: 'Négatif'
+    }
+
+    const severityLabels = {
+      INFO: 'Information',
+      ATTENTION: 'Attention',
+      IMPORTANT: 'Important',
+      URGENT: 'Urgent'
+    }
+
+    toast({
+      title: "Observation enregistrée avec succès",
+      description: `Une observation de type "${typeLabels[formData.type as keyof typeof typeLabels]}" (${severityLabels[formData.severity as keyof typeof severityLabels]}) a été ajoutée pour ${student.firstName} ${student.lastName}${formData.notifyParents ? ' - Les parents seront notifiés' : ''}`,
+      variant: "success",
+    })
+
     // Reset form
     setFormData({
       studentId: '',
@@ -269,10 +294,30 @@ export default function ObservationManagement() {
     ))
   }
 
-  const deleteObservation = (observationId: string) => {
-    if (confirm('Êtes-vous sûr de vouloir supprimer cette observation ?')) {
-      setObservations(observations.filter(obs => obs.id !== observationId))
+  const handleDeleteObservation = (observationId: string) => {
+    const observation = observations.find(obs => obs.id === observationId)
+    if (observation) {
+      setObservationToDelete(observation)
+      setDeleteDialogOpen(true)
     }
+  }
+
+  const confirmDeleteObservation = () => {
+    if (observationToDelete) {
+      setObservations(observations.filter(obs => obs.id !== observationToDelete.id))
+      toast({
+        title: "Suppression réussie",
+        description: `L'observation de type "${observationToDelete.type === 'POSITIVE' ? 'Positif' : observationToDelete.type === 'PEDAGOGICAL' ? 'Pédagogique' : observationToDelete.type === 'BEHAVIOR' ? 'Comportement' : 'Négatif'}" pour ${observationToDelete.student.firstName} ${observationToDelete.student.lastName} a été supprimée.`,
+        variant: "success",
+      })
+      setDeleteDialogOpen(false)
+      setObservationToDelete(null)
+    }
+  }
+
+  const cancelDeleteObservation = () => {
+    setDeleteDialogOpen(false)
+    setObservationToDelete(null)
   }
 
   const handleUseTemplate = (template: string) => {
@@ -575,11 +620,11 @@ export default function ObservationManagement() {
                         <Button variant="ghost" size="sm">
                           <Edit className="h-4 w-4" />
                         </Button>
-                        <Button 
-                          variant="ghost" 
+                        <Button
+                          variant="ghost"
                           size="sm"
-                          onClick={() => deleteObservation(observation.id)}
                           className="text-red-600"
+                          onClick={() => handleDeleteObservation(observation.id)}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -607,6 +652,83 @@ export default function ObservationManagement() {
           )}
         </CardContent>
       </Card>
+
+      {/* Modal de confirmation de suppression */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-600">
+              <AlertTriangle className="h-5 w-5" />
+              Confirmer la suppression
+            </DialogTitle>
+            <DialogDescription>
+              Êtes-vous sûr de vouloir supprimer cette observation ?
+              <br />
+              <span className="text-red-600">
+                Cette action est irréversible et l'observation sera définitivement supprimée du système.
+              </span>
+            </DialogDescription>
+          </DialogHeader>
+          {observationToDelete && (
+            <div className="py-4">
+              <div className="bg-gray-50 rounded-lg p-4 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-gray-600">Élève :</span>
+                  <span className="text-sm text-gray-900">
+                    {observationToDelete.student.firstName} {observationToDelete.student.lastName}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-gray-600">Type d'observation :</span>
+                  <span className="text-sm text-gray-900">
+                    {observationToDelete.type === 'POSITIVE' ? 'Positif' :
+                     observationToDelete.type === 'PEDAGOGICAL' ? 'Pédagogique' :
+                     observationToDelete.type === 'BEHAVIOR' ? 'Comportement' : 'Négatif'}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-gray-600">Date :</span>
+                  <span className="text-sm text-gray-900">
+                    {new Date(observationToDelete.createdAt).toLocaleDateString('fr-FR')}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-gray-600">Auteur :</span>
+                  <span className="text-sm text-gray-900">
+                    {observationToDelete.teacher.firstName} {observationToDelete.teacher.lastName}
+                  </span>
+                </div>
+                <div className="flex flex-col space-y-1">
+                  <span className="text-sm font-medium text-gray-600">Description :</span>
+                  <p className="text-sm text-gray-900 bg-white rounded p-2 border">
+                    {observationToDelete.content.length > 100
+                      ? observationToDelete.content.substring(0, 100) + '...'
+                      : observationToDelete.content
+                    }
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+          <div className="flex gap-3 pt-4">
+            <Button
+              variant="outline"
+              onClick={cancelDeleteObservation}
+              className="flex-1"
+            >
+              Annuler
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={confirmDeleteObservation}
+              className="flex-1 flex items-center gap-2"
+            >
+              <Trash2 className="h-4 w-4" />
+              Supprimer
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

@@ -183,7 +183,7 @@ export async function generateBulletinPDF(data: BulletinData): Promise<Uint8Arra
 
   // Pied de page
   pdf.setFont('helvetica', 'italic', 8)
-  pdf.text('Fait à Nouakchott, le ' + new Date().toLocaleDateString('fr-FR'), 20, 280, { align: 'center' })
+  pdf.text('Fait à Mauritanie, le ' + new Date().toLocaleDateString('fr-FR'), 20, 280, { align: 'center' })
   pdf.text('Page 1/1', 20, 290, { align: 'center' })
 
   // Convertir en Uint8Array
@@ -217,9 +217,9 @@ export async function generateCertificatePDF(student: Student): Promise<Uint8Arr
 
   // Informations de l'école
   pdf.setFont('helvetica', 'bold', 14)
-  pdf.text('École Primaire Nouakchott', 148.5, 50, { align: 'center' })
+  pdf.text('École Primaire Mauritanie', 148.5, 50, { align: 'center' })
   pdf.setFont('helvetica', 'normal', 10)
-  pdf.text('Avenue Gamal Abdel Nasser, Nouakchott', 148.5, 60, { align: 'center' })
+  pdf.text('Avenue Gamal Abdel Nasser, Mauritanie', 148.5, 60, { align: 'center' })
   pdf.text(`Tél: +222 456 789 012`, 148.5, 70, { align: 'center' })
   pdf.text(`Email: contact@ecole-nouakchott.mr`, 148.5, 80, { align: 'center' })
 
@@ -238,13 +238,13 @@ export async function generateCertificatePDF(student: Student): Promise<Uint8Arr
   pdf.text(`Nom : ${student.firstName} ${student.lastName}`, 40, 155)
   pdf.setFont('helvetica', 'normal', 10)
   pdf.text(`Né(e) le : ${new Date(student.dateOfBirth).toLocaleDateString('fr-FR')}`, 40, 170)
-  pdf.text(`Lieu de naissance : ${student.placeOfBirth || 'Nouakchott'}`, 40, 180)
+  pdf.text(`Lieu de naissance : ${student.placeOfBirth || 'Mauritanie'}`, 40, 180)
   pdf.text(`Numéro : ${student.studentNumber}`, 40, 190)
   pdf.text(`Classe : ${student.class?.name || ''}`, 40, 200)
 
   // Texte du certificat
   pdf.setFont('helvetica', 'justify', 11)
-  const certText = `Le soussigné certifie que l'élève susnommé a fréquenté l'école primaire Nouakchott pendant l'année scolaire ${new Date().getFullYear()}. L'élève a suivi avec assiduité les programmes d'enseignement définis par le Ministère de l'Éducation Nationale et a satisfait aux exigences de passage au niveau supérieur.`
+  const certText = `Le soussigné certifie que l'élève susnommé a fréquenté l'école primaire Mauritanie pendant l'année scolaire ${new Date().getFullYear()}. L'élève a suivi avec assiduité les programmes d'enseignement définis par le Ministère de l'Éducation Nationale et a satisfait aux exigences de passage au niveau supérieur.`
   
   const lines = pdf.splitTextToSize(certText, 217)
   let yPos = 230
@@ -257,7 +257,7 @@ export async function generateCertificatePDF(student: Student): Promise<Uint8Arr
   // Date et signature
   yPos += 20
   pdf.setFont('helvetica', 'normal', 10)
-  pdf.text(`Fait à Nouakchott, le ${new Date().toLocaleDateString('fr-FR')}`, 40, yPos)
+  pdf.text(`Fait à Mauritanie, le ${new Date().toLocaleDateString('fr-FR')}`, 40, yPos)
   
   yPos += 30
   pdf.text('Le Directeur', 40, yPos)

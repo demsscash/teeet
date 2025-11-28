@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
+import { useToast } from '@/hooks/use-toast'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -9,12 +10,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { 
-  Plus, 
-  Search, 
-  Eye, 
-  Edit, 
-  Trash2, 
+import {
+  Plus,
+  Search,
+  Eye,
+  Edit,
+  Trash2,
   Users,
   GraduationCap,
   Calendar,
@@ -23,7 +24,8 @@ import {
   Mail,
   Filter,
   Download,
-  Upload
+  Upload,
+  AlertTriangle
 } from 'lucide-react'
 
 interface Student {
@@ -55,72 +57,20 @@ interface Class {
   students: Student[]
 }
 
-const mockClasses: Class[] = [
-  { id: '1', name: 'CP1', level: 'Primaire', capacity: 40, students: [] },
-  { id: '2', name: 'CP2', level: 'Primaire', capacity: 40, students: [] },
-  { id: '3', name: 'CE1', level: 'Primaire', capacity: 40, students: [] },
-  { id: '4', name: 'CE2', level: 'Primaire', capacity: 40, students: [] },
-  { id: '5', name: 'CM1', level: 'Primaire', capacity: 40, students: [] },
-  { id: '6', name: 'CM2', level: 'Primaire', capacity: 40, students: [] },
-]
-
-const mockStudents: Student[] = [
-  {
-    id: '1',
-    studentNumber: '2024-001',
-    firstName: 'Mohamed',
-    lastName: 'Salem',
-    firstNameAr: 'محمد',
-    lastNameAr: 'سالم',
-    dateOfBirth: '2015-03-15',
-    placeOfBirth: 'Nouakchott',
-    gender: 'MALE',
-    address: 'Tevragh Zeina',
-    class: { id: '6', name: 'CM2', level: 'Primaire' },
-    isActive: true,
-    createdAt: '2024-01-15'
-  },
-  {
-    id: '2',
-    studentNumber: '2024-002',
-    firstName: 'Fatima',
-    lastName: 'Bint',
-    firstNameAr: 'فاطمة',
-    lastNameAr: 'بنت',
-    dateOfBirth: '2016-07-22',
-    placeOfBirth: 'Nouakchott',
-    gender: 'FEMALE',
-    address: 'Arafat',
-    class: { id: '4', name: 'CE2', level: 'Primaire' },
-    isActive: true,
-    createdAt: '2024-01-20'
-  },
-  {
-    id: '3',
-    studentNumber: '2024-003',
-    firstName: 'Ahmed',
-    lastName: 'Ould',
-    firstNameAr: 'أحمد',
-    lastNameAr: 'ولد',
-    dateOfBirth: '2017-11-08',
-    placeOfBirth: 'Rosso',
-    gender: 'MALE',
-    address: 'Ksar',
-    class: { id: '2', name: 'CP2', level: 'Primaire' },
-    isActive: true,
-    createdAt: '2024-02-01'
-  }
-]
 
 export default function StudentManagement() {
-  const [students, setStudents] = useState<Student[]>(mockStudents)
-  const [classes, setClasses] = useState<Class[]>(mockClasses)
-  const [filteredStudents, setFilteredStudents] = useState<Student[]>(mockStudents)
+  const { toast } = useToast()
+  const [students, setStudents] = useState<Student[]>([])
+  const [classes, setClasses] = useState<Class[]>([])
+  const [filteredStudents, setFilteredStudents] = useState<Student[]>([])
+  const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedClass, setSelectedClass] = useState<string>('all')
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
   const [editingStudent, setEditingStudent] = useState<Student | null>(null)
   const [activeTab, setActiveTab] = useState('list')
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [studentToDelete, setStudentToDelete] = useState<Student | null>(null)
 
   // Formulaire d'ajout/modification
   const [formData, setFormData] = useState({
@@ -135,9 +85,48 @@ export default function StudentManagement() {
     classId: ''
   })
 
+  // Charger les données depuis l'API
+  useEffect(() => {
+    fetchClasses()
+    fetchStudents()
+  }, [])
+
   useEffect(() => {
     filterStudents()
   }, [students, searchTerm, selectedClass])
+
+  const fetchStudents = async () => {
+    try {
+      setLoading(true)
+      const response = await fetch('/api/students')
+      if (!response.ok) throw new Error('Failed to fetch students')
+      const data = await response.json()
+      setStudents(data.students)
+    } catch (error) {
+      toast({
+        title: "Erreur",
+        description: "Impossible de charger les élèves",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const fetchClasses = async () => {
+    try {
+      const response = await fetch('/api/classes')
+      if (!response.ok) throw new Error('Failed to fetch classes')
+      const data = await response.json()
+      setClasses(data)
+    } catch (error) {
+      toast({
+        title: "Erreur",
+        description: "Impossible de charger les classes",
+        variant: "destructive",
+      })
+    }
+  }
 
   const filterStudents = () => {
     let filtered = students
@@ -159,42 +148,76 @@ export default function StudentManagement() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
-    if (editingStudent) {
-      // Mode modification
-      setStudents(students.map(student =>
-        student.id === editingStudent.id
-          ? { ...student, ...formData }
-          : student
-      ))
-    } else {
-      // Mode ajout
-      const newStudent: Student = {
-        id: Date.now().toString(),
-        studentNumber: `2024-${String(students.length + 1).padStart(3, '0')}`,
-        ...formData,
-        gender: formData.gender as 'MALE' | 'FEMALE',
-        class: classes.find(c => c.id === formData.classId),
-        isActive: true,
-        createdAt: new Date().toISOString()
-      }
-      setStudents([...students, newStudent])
-    }
 
-    // Reset form
-    setFormData({
-      firstName: '',
-      lastName: '',
-      firstNameAr: '',
-      lastNameAr: '',
-      dateOfBirth: '',
-      placeOfBirth: '',
-      gender: '',
-      address: '',
-      classId: ''
-    })
-    setEditingStudent(null)
-    setIsAddDialogOpen(false)
+    try {
+      if (editingStudent) {
+        // Mode modification
+        const response = await fetch(`/api/students/${editingStudent.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            ...formData,
+            classId: formData.classId || null,
+          }),
+        })
+
+        if (!response.ok) throw new Error('Failed to update student')
+
+        const updatedStudent = await response.json()
+        setStudents(students.map(student =>
+          student.id === editingStudent.id ? updatedStudent : student
+        ))
+
+        toast({
+          title: "Modification réussie",
+          description: `Les informations de ${formData.firstName} ${formData.lastName} ont été mises à jour.`,
+          variant: "success",
+        })
+      } else {
+        // Mode ajout
+        const response = await fetch('/api/students', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(formData),
+        })
+
+        if (!response.ok) throw new Error('Failed to create student')
+
+        const newStudent = await response.json()
+        setStudents([...students, newStudent])
+
+        toast({
+          title: "Ajout réussi",
+          description: `${formData.firstName} ${formData.lastName} a été ajouté(e) avec succès à la classe ${classes.find(c => c.id === formData.classId)?.name}.`,
+          variant: "success",
+        })
+      }
+
+      // Reset form
+      setFormData({
+        firstName: '',
+        lastName: '',
+        firstNameAr: '',
+        lastNameAr: '',
+        dateOfBirth: '',
+        placeOfBirth: '',
+        gender: '',
+        address: '',
+        classId: ''
+      })
+      setEditingStudent(null)
+      setIsAddDialogOpen(false)
+    } catch (error) {
+      toast({
+        title: "Erreur",
+        description: "Impossible d'ajouter l'élève",
+        variant: "destructive",
+      })
+    }
   }
 
   const handleEdit = (student: Student) => {
@@ -214,15 +237,62 @@ export default function StudentManagement() {
   }
 
   const handleDelete = (studentId: string) => {
-    if (confirm('Êtes-vous sûr de vouloir supprimer cet élève ?')) {
-      setStudents(students.filter(student => student.id !== studentId))
+    const student = students.find(s => s.id === studentId)
+    if (student) {
+      setStudentToDelete(student)
+      setDeleteDialogOpen(true)
     }
+  }
+
+  const confirmDelete = async () => {
+    if (studentToDelete) {
+      try {
+        const response = await fetch(`/api/students/${studentToDelete.id}`, {
+          method: 'DELETE',
+        })
+
+        if (!response.ok) throw new Error('Failed to delete student')
+
+        setStudents(students.filter(student => student.id !== studentToDelete.id))
+
+        toast({
+          title: "Suppression réussie",
+          description: `${studentToDelete.firstName} ${studentToDelete.lastName} a été supprimé(e) avec succès.`,
+          variant: "success",
+        })
+
+        setDeleteDialogOpen(false)
+        setStudentToDelete(null)
+      } catch (error) {
+        toast({
+          title: "Erreur",
+          description: "Impossible de supprimer l'élève",
+          variant: "destructive",
+        })
+      }
+    }
+  }
+
+  const cancelDelete = () => {
+    setDeleteDialogOpen(false)
+    setStudentToDelete(null)
   }
 
   const getGenderBadge = (gender: string) => {
     return gender === 'MALE' 
       ? <Badge className="bg-blue-100 text-blue-800">Garçon</Badge>
       : <Badge className="bg-pink-100 text-pink-800">Fille</Badge>
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-96">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-2 text-gray-600">Chargement des élèves...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -520,6 +590,64 @@ export default function StudentManagement() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Modal de confirmation de suppression */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-600">
+              <AlertTriangle className="h-5 w-5" />
+              Confirmer la suppression
+            </DialogTitle>
+            <DialogDescription>
+              Êtes-vous sûr de vouloir supprimer <strong>{studentToDelete?.firstName} {studentToDelete?.lastName}</strong> ?
+              <br />
+              <span className="text-red-600">
+                Cette action est irréversible et toutes les données associées à cet élève seront perdues.
+              </span>
+            </DialogDescription>
+          </DialogHeader>
+
+          {studentToDelete && (
+            <div className="py-4">
+              <div className="bg-gray-50 rounded-lg p-4 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-gray-600">Numéro :</span>
+                  <span className="text-sm text-gray-900">{studentToDelete.studentNumber}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-gray-600">Classe :</span>
+                  <span className="text-sm text-gray-900">{studentToDelete.class?.name || 'Non assigné'}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-gray-600">Sexe :</span>
+                  <span className="text-sm text-gray-900">
+                    {studentToDelete.gender === 'MALE' ? 'Garçon' : 'Fille'}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="flex gap-3 pt-4">
+            <Button
+              variant="outline"
+              onClick={cancelDelete}
+              className="flex-1"
+            >
+              Annuler
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={confirmDelete}
+              className="flex-1 flex items-center gap-2"
+            >
+              <Trash2 className="h-4 w-4" />
+              Supprimer
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

@@ -17,9 +17,9 @@ export async function initializeDatabase() {
     if (!school) {
       school = await db.school.create({
         data: {
-          name: 'École Primaire Nouakchott',
+          name: 'École Primaire Mauritanie',
           nameAr: 'مدرسة نواكشوط الابتدائية',
-          address: 'Avenue Gamal Abdel Nasser, Nouakchott',
+          address: 'Avenue Gamal Abdel Nasser, Mauritanie',
           phone: '+222 456 789 012',
           email: 'contact@ecole-nouakchott.mr'
         }
@@ -126,7 +126,7 @@ export async function initializeDatabase() {
         firstNameAr: 'محمد',
         lastNameAr: 'سالم',
         dateOfBirth: new Date('2015-03-15'),
-        placeOfBirth: 'Nouakchott',
+        placeOfBirth: 'Mauritanie',
         gender: 'MALE' as const,
         address: 'Tevragh Zeina'
       },
@@ -137,7 +137,7 @@ export async function initializeDatabase() {
         firstNameAr: 'فاطمة',
         lastNameAr: 'بنت',
         dateOfBirth: new Date('2016-07-22'),
-        placeOfBirth: 'Nouakchott',
+        placeOfBirth: 'Mauritanie',
         gender: 'FEMALE' as const,
         address: 'Arafat'
       },

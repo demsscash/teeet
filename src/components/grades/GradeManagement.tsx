@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
+import { useToast } from '@/hooks/use-toast'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -10,10 +11,10 @@ import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
-import { 
-  Plus, 
-  Calculator, 
-  FileText, 
+import {
+  Plus,
+  Calculator,
+  FileText,
   Download,
   Eye,
   Edit,
@@ -22,7 +23,8 @@ import {
   TrendingDown,
   Award,
   BarChart3,
-  Users
+  Users,
+  AlertTriangle
 } from 'lucide-react'
 
 // Configuration des barèmes mauritaniens
@@ -103,6 +105,7 @@ const mockGrades: Grade[] = [
 ]
 
 export default function GradeManagement() {
+  const { toast } = useToast()
   const [selectedClass, setSelectedClass] = useState('CM2')
   const [selectedTerm, setSelectedTerm] = useState('T1')
   const [selectedSubject, setSelectedSubject] = useState('')
@@ -111,6 +114,8 @@ export default function GradeManagement() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
   const [activeTab, setActiveTab] = useState('input')
   const [showResults, setShowResults] = useState(false)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [gradeToDelete, setGradeToDelete] = useState<Grade | null>(null)
 
   // Formulaire de saisie
   const [formData, setFormData] = useState({
@@ -139,7 +144,7 @@ export default function GradeManagement() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     const score = parseFloat(formData.score)
     if (isNaN(score) || score < 0 || score > maxScore) {
       alert(`Veuillez entrer une note valide entre 0 et ${maxScore}`)
@@ -166,7 +171,14 @@ export default function GradeManagement() {
     }
 
     setGrades([...grades, newGrade])
-    
+
+    // Show success toast
+    toast({
+      title: "Note ajoutée avec succès",
+      description: `La note de ${score}/${maxScore} (${newGrade.percentage}%) a été enregistrée pour ${student.firstName} ${student.lastName} en ${selectedSubject} - ${formData.examType} ${formData.term}`,
+      variant: "success",
+    })
+
     // Reset form
     setFormData({
       studentId: '',
@@ -232,6 +244,34 @@ export default function GradeManagement() {
     if (percentage >= 60) return <Badge className="bg-blue-100 text-blue-800">Bien</Badge>
     if (percentage >= 50) return <Badge className="bg-orange-100 text-orange-800">Passable</Badge>
     return <Badge className="bg-red-100 text-red-800">Insuffisant</Badge>
+  }
+
+  const handleDeleteGrade = (gradeId: string) => {
+    const grade = grades.find(g => g.id === gradeId)
+    if (grade) {
+      setGradeToDelete(grade)
+      setDeleteDialogOpen(true)
+    }
+  }
+
+  const confirmDeleteGrade = () => {
+    if (gradeToDelete) {
+      setGrades(grades.filter(grade => grade.id !== gradeToDelete.id))
+
+      toast({
+        title: "Suppression réussie",
+        description: `La note de ${gradeToDelete.score}/${gradeToDelete.subject.maxScore} pour ${gradeToDelete.student.firstName} ${gradeToDelete.student.lastName} a été supprimée.`,
+        variant: "success",
+      })
+
+      setDeleteDialogOpen(false)
+      setGradeToDelete(null)
+    }
+  }
+
+  const cancelDeleteGrade = () => {
+    setDeleteDialogOpen(false)
+    setGradeToDelete(null)
   }
 
   return (
@@ -493,7 +533,12 @@ export default function GradeManagement() {
                             <Button variant="ghost" size="sm">
                               <Edit className="h-4 w-4" />
                             </Button>
-                            <Button variant="ghost" size="sm" className="text-red-600">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-red-600"
+                              onClick={() => handleDeleteGrade(grade.id)}
+                            >
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>
@@ -656,6 +701,74 @@ export default function GradeManagement() {
           )}
         </TabsContent>
       </Tabs>
+
+      {/* Modal de confirmation de suppression */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-600">
+              <AlertTriangle className="h-5 w-5" />
+              Confirmer la suppression
+            </DialogTitle>
+            <DialogDescription>
+              Êtes-vous sûr de vouloir supprimer cette note ?
+              <br />
+              <span className="text-red-600">
+                Cette action est irréversible et la note sera définitivement supprimée du système.
+              </span>
+            </DialogDescription>
+          </DialogHeader>
+
+          {gradeToDelete && (
+            <div className="py-4">
+              <div className="bg-gray-50 rounded-lg p-4 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-gray-600">Élève :</span>
+                  <span className="text-sm text-gray-900">
+                    {gradeToDelete.student.firstName} {gradeToDelete.student.lastName}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-gray-600">Matière :</span>
+                  <span className="text-sm text-gray-900">{gradeToDelete.subject.name}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-gray-600">Note :</span>
+                  <span className="text-sm font-medium text-gray-900">
+                    {gradeToDelete.score}/{gradeToDelete.subject.maxScore} ({gradeToDelete.percentage}%)
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-gray-600">Type :</span>
+                  <span className="text-sm text-gray-900">{gradeToDelete.examType}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-gray-600">Trimestre :</span>
+                  <span className="text-sm text-gray-900">{gradeToDelete.term}</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="flex gap-3 pt-4">
+            <Button
+              variant="outline"
+              onClick={cancelDeleteGrade}
+              className="flex-1"
+            >
+              Annuler
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={confirmDeleteGrade}
+              className="flex-1 flex items-center gap-2"
+            >
+              <Trash2 className="h-4 w-4" />
+              Supprimer
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
